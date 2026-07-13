@@ -37,8 +37,18 @@ export async function connectToMongoDB() {
       genre: string;
       imageUrl?: string;
     }
+    interface CartItem {
+      bookId: string;
+      title: string;
+      genre: string;
+      price: string | number;
+      imageUrl?: string;
+      quantity: number;
+      userEmail?: string;
+    }
     const database = client.db("the_literary_nook");
     const booksCollection = database.collection<Book>("Books");
+    const cartsCollection = database.collection<CartItem>("Carts");
 
     // new book data page
     app.post("/api/books", async (req, res) => {
@@ -54,6 +64,59 @@ export async function connectToMongoDB() {
       } catch (error) {
         console.error("Error fetching books:", error);
         res.status(500).send({ message: "Failed to fetch books" });
+      }
+    });
+
+    // cart post
+    app.post("/api/carts", async (req, res) => {
+      try {
+        const { bookId, title, genre, price, imageUrl, quantity, userEmail } =
+          req.body;
+
+        const query = { bookId: bookId };
+        const existingItem = await cartsCollection.findOne(query);
+
+        if (existingItem) {
+          const updateDoc = {
+            $set: { quantity: existingItem.quantity + quantity },
+          };
+          const result = await cartsCollection.updateOne(query, updateDoc);
+          res.send(result);
+        } else {
+          const result = await cartsCollection.insertOne({
+            bookId,
+            title,
+            genre,
+            price,
+            imageUrl,
+            quantity,
+            userEmail,
+          });
+          res.send(result);
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Failed to add to cart" });
+      }
+    });
+
+    // car get
+    app.get("/api/carts", async (req: Request, res: Response) => {
+      try {
+        const result = await cartsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch cart items" });
+      }
+    });
+
+    //cart delete
+    app.delete("/api/carts/:id", async (req: Request, res: Response) => {
+      try {
+        const id = req.params.id;
+        const result = await cartsCollection.deleteOne({ bookId: id });
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to delete cart item" });
       }
     });
 
