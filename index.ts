@@ -40,10 +40,21 @@ export async function connectToMongoDB() {
     const database = client.db("the_literary_nook");
     const booksCollection = database.collection<Book>("Books");
 
+    // new book data page
     app.post("/api/books", async (req, res) => {
       const book = req.body;
       const result = await booksCollection.insertOne(book);
       res.send(result);
+    });
+    // book dekanor api
+    app.get("/api/books", async (req: Request, res: Response) => {
+      try {
+        const result = await booksCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching books:", error);
+        res.status(500).send({ message: "Failed to fetch books" });
+      }
     });
 
     console.log("You successfully connected to MongoDB!");
