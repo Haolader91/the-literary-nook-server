@@ -1,0 +1,61 @@
+import { MongoClient } from "mongodb";
+import express, { type Express, type Request, type Response } from "express";
+import cors from "cors";
+import "dotenv/config"; // ✅ ১. মডার্ন উপায়ে dotenv ইমপোর্ট করা হলো
+
+const app: Express = express();
+const port = 5000;
+
+// মিডলওয়্যার (ভবিষ্যতে ফ্রন্টএন্ড থেকে ডাটা পোস্ট করার জন্য এটি লাগবে)
+app.use(express.json());
+app.use(cors());
+
+app.get("/", (req: Request, res: Response) => {
+  res.send("Hello World!");
+});
+
+// ======================================================
+//  ২. টাইপ সেফটি নিশ্চিত করতে fallback বা টাইপ কাস্টিং ব্যবহার করা হয়েছে
+const mongoUri = process.env.MONGODB_URL;
+
+if (!mongoUri) {
+  console.error("Error: MONGODB_URL is not defined in .env file!");
+  process.exit(1);
+}
+
+const client = new MongoClient(mongoUri);
+
+export async function connectToMongoDB() {
+  try {
+    await client.connect();
+
+    interface Book {
+      title: string;
+      shortDescription: string;
+      fullDescription: string;
+      price: string;
+      genre: string;
+      imageUrl?: string;
+    }
+    const database = client.db("the_literary_nook");
+    const booksCollection = database.collection<Book>("Books");
+
+    app.post("/api/books", async (req, res) => {
+      const book = req.body;
+      const result = await booksCollection.insertOne(book);
+      res.send(result);
+    });
+
+    console.log("You successfully connected to MongoDB!");
+    return client;
+  } catch (err) {
+    console.error("MongoDB Connection Error:", err);
+  }
+}
+
+connectToMongoDB();
+
+// ======================================================
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
+});
