@@ -120,6 +120,27 @@ export async function connectToMongoDB() {
       }
     });
 
+    // genres slug page
+    app.get("/api/genres-count", async (req: Request, res: Response) => {
+      try {
+        const counts = await booksCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$genre",
+                count: { $sum: 1 },
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(counts);
+      } catch (error) {
+        console.error("Error fetching genre counts:", error);
+        res.status(500).send({ message: "Failed to fetch genre counts" });
+      }
+    });
+
     console.log("You successfully connected to MongoDB!");
     return client;
   } catch (err) {
