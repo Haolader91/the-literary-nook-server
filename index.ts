@@ -81,8 +81,17 @@ export async function connectToMongoDB() {
         const existingItem = await cartsCollection.findOne(query);
 
         if (existingItem) {
+          const newQuantity = existingItem.quantity + quantity;
+
+          if (newQuantity < 1) {
+            return res.send({
+              message: "Quantity cannot be less than 1",
+              modifiedCount: 0,
+            });
+          }
+
           const updateDoc = {
-            $set: { quantity: existingItem.quantity + quantity },
+            $set: { quantity: newQuantity },
           };
           const result = await cartsCollection.updateOne(query, updateDoc);
           res.send(result);
@@ -93,7 +102,7 @@ export async function connectToMongoDB() {
             genre,
             price,
             imageUrl,
-            quantity,
+            quantity: quantity < 1 ? 1 : quantity,
             userEmail,
           });
           res.send(result);
