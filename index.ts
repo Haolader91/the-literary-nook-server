@@ -1,12 +1,16 @@
 import { MongoClient } from "mongodb";
 import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
-import "dotenv/config"; // ✅ ১. মডার্ন উপায়ে dotenv ইমপোর্ট করা হলো
+import "dotenv/config";
+import Stripe from "stripe";
 
 const app: Express = express();
 const port = 5000;
 
-// মিডলওয়্যার (ভবিষ্যতে ফ্রন্টএন্ড থেকে ডাটা পোস্ট করার জন্য এটি লাগবে)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2023-10-16" as any,
+});
+
 app.use(express.json());
 app.use(cors());
 
@@ -15,7 +19,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // ======================================================
-//  ২. টাইপ সেফটি নিশ্চিত করতে fallback বা টাইপ কাস্টিং ব্যবহার করা হয়েছে
+
 const mongoUri = process.env.MONGODB_URL;
 
 if (!mongoUri) {
@@ -169,6 +173,56 @@ export async function connectToMongoDB() {
       }
     });
 
+    // payment Stripe Checkout Session API
+    app.post("/api/create-checkout-session", async (req, res) => {
+      try {
+        const { cartItems, shippingFee } = req.body;
+
+        const line_items = cartItems.map((item: any) => ({
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: item.title,
+              images: item.imageUrl ? [item.imageUrl] : [],
+              metadata: {
+                bookId: item.bookId,
+                genre: item.genre,
+              },
+            },
+
+            unit_amount: Math.round(Number(item.price) * 100),
+          },
+          quantity: item.quantity,
+        }));
+
+        if (shippingFee > 0) {
+          line_items.push({
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: "Estimated Shipping Fee",
+              },
+              unit_amount: Math.round(shippingFee * 100),
+            },
+            quantity: 1,
+          });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          line_items: line_items,
+          mode: "payment",
+
+          success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.FRONTEND_URL}/cart`,
+        });
+
+        res.status(200).json({ url: session.url });
+      } catch (error: any) {
+        console.error("Stripe error:", error);
+        res.status(500).json({ message: error.message });
+      }
+    });
     console.log("You successfully connected to MongoDB!");
     return client;
   } catch (err) {
