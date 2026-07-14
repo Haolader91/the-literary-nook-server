@@ -120,6 +120,34 @@ export async function connectToMongoDB() {
       }
     });
 
+    // genres page
+    app.get("/api/genres", async (req: Request, res: Response) => {
+      try {
+        const genresWithCount = await booksCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$genre",
+                count: { $sum: 1 },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                name: "$_id",
+                count: 1,
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(genresWithCount);
+      } catch (error) {
+        console.error("Error fetching dynamic genres:", error);
+        res.status(500).send({ message: "Failed to fetch genres" });
+      }
+    });
+
     // genres slug page
     app.get("/api/genres-count", async (req: Request, res: Response) => {
       try {
