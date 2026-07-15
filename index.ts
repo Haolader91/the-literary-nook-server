@@ -41,7 +41,7 @@ interface CartItem {
   price: string | number;
   imageUrl?: string;
   quantity: number;
-  userEmail?: string;
+  userEmail: string;
 }
 
 const booksCollection = database.collection<Book>("Books");
@@ -83,7 +83,12 @@ app.post("/api/carts", async (req: Request, res: Response) => {
   try {
     const { bookId, title, genre, price, imageUrl, quantity, userEmail } =
       req.body;
-    const query = { bookId: bookId };
+
+    if (!userEmail) {
+      return res.status(400).send({ message: "User email is required" });
+    }
+
+    const query = { bookId: bookId, userEmail: userEmail };
     const existingItem = await cartsCollection.findOne(query);
 
     if (existingItem) {
@@ -121,7 +126,15 @@ app.post("/api/carts", async (req: Request, res: Response) => {
 // cart get
 app.get("/api/carts", async (req: Request, res: Response) => {
   try {
-    const result = await cartsCollection.find().toArray();
+    const userEmail = req.query.email as string;
+
+    if (!userEmail) {
+      return res
+        .status(400)
+        .send({ message: "User email is required to fetch cart" });
+    }
+
+    const result = await cartsCollection.find({ userEmail }).toArray();
     res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Failed to fetch cart items" });
@@ -132,7 +145,18 @@ app.get("/api/carts", async (req: Request, res: Response) => {
 app.delete("/api/carts/:id", async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
-    const result = await cartsCollection.deleteOne({ bookId: id });
+    const userEmail = req.query.email as string;
+
+    if (!userEmail) {
+      return res
+        .status(400)
+        .send({ message: "User email is required to delete item" });
+    }
+
+    const result = await cartsCollection.deleteOne({
+      bookId: id,
+      userEmail: userEmail,
+    });
     res.send(result);
   } catch (error) {
     res.status(500).send({ message: "Failed to delete cart item" });
