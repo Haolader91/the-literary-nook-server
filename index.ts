@@ -55,7 +55,7 @@ export async function connectToMongoDB() {
     const cartsCollection = database.collection<CartItem>("Carts");
 
     // new book data page
-    app.post("/api/books", async (req, res) => {
+    app.post("/api/books", async (req: Request, res: Response) => {
       const book = req.body;
       const result = await booksCollection.insertOne(book);
       res.send(result);
@@ -72,7 +72,7 @@ export async function connectToMongoDB() {
     });
 
     // cart post
-    app.post("/api/carts", async (req, res) => {
+    app.post("/api/carts", async (req: Request, res: Response) => {
       try {
         const { bookId, title, genre, price, imageUrl, quantity, userEmail } =
           req.body;
@@ -183,55 +183,58 @@ export async function connectToMongoDB() {
     });
 
     // payment Stripe Checkout Session API
-    app.post("/api/create-checkout-session", async (req, res) => {
-      try {
-        const { cartItems, shippingFee } = req.body;
+    app.post(
+      "/api/create-checkout-session",
+      async (req: Request, res: Response) => {
+        try {
+          const { cartItems, shippingFee } = req.body;
 
-        const line_items = cartItems.map((item: any) => ({
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: item.title,
-              images: item.imageUrl ? [item.imageUrl] : [],
-              metadata: {
-                bookId: item.bookId,
-                genre: item.genre,
-              },
-            },
-
-            unit_amount: Math.round(Number(item.price) * 100),
-          },
-          quantity: item.quantity,
-        }));
-
-        if (shippingFee > 0) {
-          line_items.push({
+          const line_items = cartItems.map((item: any) => ({
             price_data: {
               currency: "usd",
               product_data: {
-                name: "Estimated Shipping Fee",
+                name: item.title,
+                images: item.imageUrl ? [item.imageUrl] : [],
+                metadata: {
+                  bookId: item.bookId,
+                  genre: item.genre,
+                },
               },
-              unit_amount: Math.round(shippingFee * 100),
+
+              unit_amount: Math.round(Number(item.price) * 100),
             },
-            quantity: 1,
+            quantity: item.quantity,
+          }));
+
+          if (shippingFee > 0) {
+            line_items.push({
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: "Estimated Shipping Fee",
+                },
+                unit_amount: Math.round(shippingFee * 100),
+              },
+              quantity: 1,
+            });
+          }
+
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: line_items,
+            mode: "payment",
+
+            success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${process.env.FRONTEND_URL}/cart`,
           });
+
+          res.status(200).json({ url: session.url });
+        } catch (error: any) {
+          console.error("Stripe error:", error);
+          res.status(500).json({ message: error.message });
         }
-
-        const session = await stripe.checkout.sessions.create({
-          payment_method_types: ["card"],
-          line_items: line_items,
-          mode: "payment",
-
-          success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${process.env.FRONTEND_URL}/cart`,
-        });
-
-        res.status(200).json({ url: session.url });
-      } catch (error: any) {
-        console.error("Stripe error:", error);
-        res.status(500).json({ message: error.message });
-      }
-    });
+      },
+    );
     console.log("You successfully connected to MongoDB!");
     return client;
   } catch (err) {
