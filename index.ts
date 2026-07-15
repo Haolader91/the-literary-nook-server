@@ -31,7 +31,7 @@ const client = new MongoClient(mongoUri);
 
 export async function connectToMongoDB() {
   try {
-    await client.connect();
+    // await client.connect();
 
     interface Book {
       title: string;
