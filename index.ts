@@ -235,7 +235,13 @@ export async function connectToMongoDB() {
         }
       },
     );
+
     console.log("You successfully connected to MongoDB!");
+
+    app.listen(port, () => {
+      console.log(`Example app listening on port ${port}`);
+    });
+
     return client;
   } catch (err) {
     console.error("MongoDB Connection Error:", err);
@@ -243,8 +249,3 @@ export async function connectToMongoDB() {
 }
 
 connectToMongoDB();
-
-// ======================================================
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});

@@ -1,15 +1,19 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "typescript": true
+      }
+    }
+  ],
   "routes": [
     {
       "src": "/(.*)",
       "dest": "index.ts",
       "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     }
-  ],
-  "functions": {
-    "index.ts": {
-      "runtime": "nodejs20.x"
-    }
-  }
+  ]
 }
